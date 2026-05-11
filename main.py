@@ -26,7 +26,9 @@ load_dotenv()
 app = FastAPI(title="Cloud Computing Evaluation API (Starter)")
 
 # Configurar templates
-templates = Jinja2Templates(directory="templates")
+from jinja2 import Environment, FileSystemLoader
+template_env = Environment(loader=FileSystemLoader("templates"))
+templates = Jinja2Templates(env=template_env)
 
 # Montar archivos estáticos (si los necesitamos después)
 # app.mount("/static", StaticFiles(directory="static"), name="static")
