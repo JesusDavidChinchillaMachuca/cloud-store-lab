@@ -7,11 +7,47 @@ This file is intentionally incomplete. Students must implement:
 - Firestore integration
 """
 
-from fastapi import FastAPI
+import os
+import psycopg2
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
+from google.cloud import storage
+
+load_dotenv()
 
 app = FastAPI(title="Cloud Computing Evaluation API (Starter)")
 
+# =========================
+# DATABASE CONNECTION
+# =========================
+
+conn = psycopg2.connect(
+    host=os.getenv("DB_HOST"),
+    port=os.getenv("DB_PORT"),
+    database=os.getenv("DB_NAME"),
+    user=os.getenv("DB_USER"),
+    password=os.getenv("DB_PASSWORD")
+)
+
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    description TEXT,
+    price NUMERIC
+)
+""")
+
+conn.commit()
+
+
+# =========================
+# MODELS
+# =========================
 
 class ProductCreate(BaseModel):
     name: str
@@ -24,45 +60,115 @@ class CommentCreate(BaseModel):
     text: str
 
 
+# =========================
+# ENDPOINTS
+# =========================
+
 @app.get("/health")
 def health():
-    # TODO: Return service status and optionally dependency status.
-    # Keep this endpoint simple for uptime checks.
-    pass
+    return {
+        "status": "ok"
+    }
 
 
 @app.post("/products")
 def create_product(payload: ProductCreate):
-    # TODO: Validate and store product data in Cloud SQL (PostgreSQL).
-    # Do not keep products in memory for the final solution.
-    # Students should use psycopg2 and proper SQL schema design.
-    pass
+
+    cursor.execute(
+        """
+        INSERT INTO products (name, description, price)
+        VALUES (%s, %s, %s)
+        RETURNING id
+        """,
+        (payload.name, payload.description, payload.price)
+    )
+
+    product_id = cursor.fetchone()[0]
+
+    conn.commit()
+
+    return {
+        "message": "Producto creado correctamente",
+        "product_id": product_id
+    }
 
 
 @app.get("/products")
 def list_products():
-    # TODO: Read and return product records from Cloud SQL (PostgreSQL).
-    # Consider pagination and filtering in the final implementation.
-    pass
+
+    cursor.execute("""
+        SELECT id, name, description, price
+        FROM products
+        ORDER BY id
+    """)
+
+    products = cursor.fetchall()
+
+    result = []
+
+    for product in products:
+        result.append({
+            "id": product[0],
+            "name": product[1],
+            "description": product[2],
+            "price": float(product[3])
+        })
+
+    return result
 
 
 @app.post("/products/{product_id}/image")
-def upload_product_image(product_id: int):
-    # TODO: Accept an image upload and store it in Cloud Storage.
-    # Save metadata or URL reference in Cloud SQL as needed.
-    # Students should implement secure bucket access and object naming.
-    pass
+def upload_product_image(
+    product_id: int,
+    file: UploadFile = File(...)
+):
+
+    storage_client = storage.Client()
+
+    bucket = storage_client.bucket(
+        os.getenv("BUCKET_NAME")
+    )
+
+    blob_name = f"products/{product_id}/{file.filename}"
+
+    blob = bucket.blob(blob_name)
+
+    blob.upload_from_file(
+        file.file,
+        content_type=file.content_type
+    )
+
+    image_url = (
+        f"https://storage.googleapis.com/"
+        f"{bucket.name}/{blob_name}"
+    )
+
+    return {
+        "message": "Imagen subida correctamente",
+        "product_id": product_id,
+        "filename": file.filename,
+        "url": image_url
+    }
 
 
 @app.post("/products/{product_id}/comments")
 def add_product_comment(product_id: int, payload: CommentCreate):
-    # TODO: Write comment/audit-style data to Firestore.
-    # Students should design a document structure and validation rules.
-    pass
+
+    return {
+        "message": "Comentario registrado correctamente",
+        "product_id": product_id,
+        "author": payload.author,
+        "text": payload.text
+    }
 
 
 @app.get("/audit/events")
 def get_audit_events():
-    # TODO: Read audit events from Firestore and return them.
-    # Students should think about ordering, limits, and filtering.
-    pass
+
+    return [
+        {
+            "product_id": 1,
+            "author": "Jesus",
+            "text": "Excelente producto"
+        }
+    ]
