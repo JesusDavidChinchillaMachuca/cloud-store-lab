@@ -87,7 +87,7 @@ class CommentCreate(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request, "title": "Cloud Store Lab"})
 
 @app.get("/health")
 def health():
@@ -122,7 +122,7 @@ def health_page(request: Request):
 
 @app.post("/products")
 def create_product(
-    request: Request = None,
+    request: Request,
     name: str = Form(None),
     description: str = Form(None),
     price: float = Form(None),
@@ -134,13 +134,11 @@ def create_product(
     if is_html_request:
         # Validar datos del formulario
         if not name or not price:
-            if request:
-                return templates.TemplateResponse("products.html", {
-                    "request": request,
-                    "products": [],
-                    "error": "Nombre y precio son requeridos"
-                })
-            raise HTTPException(status_code=400, detail="Nombre y precio son requeridos")
+            return templates.TemplateResponse("products.html", {
+                "request": request,
+                "products": [],
+                "error": "Nombre y precio son requeridos"
+            })
 
         product_data = ProductCreate(name=name, description=description, price=price)
     else:
@@ -176,7 +174,7 @@ def create_product(
         }
 
     except Exception as e:
-        if is_html_request and request:
+        if is_html_request:
             return templates.TemplateResponse("products.html", {
                 "request": request,
                 "products": [],
@@ -186,7 +184,7 @@ def create_product(
 
 
 @app.get("/products")
-def list_products(request: Request = None):
+def list_products(request: Request):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -210,25 +208,18 @@ def list_products(request: Request = None):
                 "price": float(product[3])
             })
 
-        # Si es una petición desde navegador (tiene request), devolver HTML
-        if request:
-            return templates.TemplateResponse("products.html", {
-                "request": request,
-                "products": result,
-                "error": None
-            })
-
-        # Si no, devolver JSON (para API)
-        return result
+        return templates.TemplateResponse("products.html", {
+            "request": request,
+            "products": result,
+            "error": None
+        })
 
     except Exception as e:
-        if request:
-            return templates.TemplateResponse("products.html", {
-                "request": request,
-                "products": [],
-                "error": str(e)
-            })
-        raise HTTPException(status_code=500, detail=str(e))
+        return templates.TemplateResponse("products.html", {
+            "request": request,
+            "products": [],
+            "error": str(e)
+        })
 
 
 @app.post("/products/{product_id}/image")
@@ -286,3 +277,67 @@ def get_audit_events():
             "text": "Excelente producto"
         }
     ]
+
+
+# =========================
+# API ENDPOINTS (JSON)
+# =========================
+
+@app.get("/api/products")
+def api_list_products():
+    """API endpoint that returns JSON"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, name, description, price
+            FROM products
+            ORDER BY id
+        """)
+
+        products = cursor.fetchall()
+        conn.close()
+
+        result = []
+
+        for product in products:
+            result.append({
+                "id": product[0],
+                "name": product[1],
+                "description": product[2],
+                "price": float(product[3])
+            })
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/products")
+def api_create_product(payload: ProductCreate):
+    """API endpoint for creating products via JSON"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO products (name, description, price)
+            VALUES (%s, %s, %s)
+            RETURNING id
+            """,
+            (payload.name, payload.description, payload.price)
+        )
+
+        product_id = cursor.fetchone()[0]
+        conn.commit()
+        conn.close()
+
+        return {
+            "message": "Producto creado correctamente",
+            "product_id": product_id
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
