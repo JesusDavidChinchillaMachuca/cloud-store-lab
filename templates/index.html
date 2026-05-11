@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - Cloud Store Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>🏠 Bienvenido a Cloud Store Lab</h2>
+    <p>Esta es una aplicación de demostración para el laboratorio de computación en la nube que incluye:</p>
+    <ul>
+        <li>✅ API REST con FastAPI</li>
+        <li>✅ Base de datos PostgreSQL</li>
+        <li>✅ Almacenamiento en la nube (Cloud Storage)</li>
+        <li>✅ Despliegue en Google App Engine</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h3>🚀 Navegación Rápida</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <a href="/products" class="btn" style="text-align: center;">📦 Ver Productos</a>
+        <a href="/health" class="btn" style="text-align: center;">🔍 Estado del Sistema</a>
+    </div>
+</div>
+
+<div class="card">
+    <h3>📋 Funcionalidades Disponibles</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 5px;">
+            <h4>🛍️ Gestión de Productos</h4>
+            <p>Crear, listar y gestionar productos con imágenes y comentarios.</p>
+        </div>
+        <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 5px;">
+            <h4>🖼️ Almacenamiento de Imágenes</h4>
+            <p>Subir imágenes de productos a Google Cloud Storage.</p>
+        </div>
+        <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 5px;">
+            <h4>💬 Sistema de Comentarios</h4>
+            <p>Agregar comentarios a productos con información de auditoría.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

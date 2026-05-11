@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Productos - Cloud Store Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📦 Gestión de Productos</h2>
+    <p>Aquí puedes ver todos los productos disponibles y crear nuevos.</p>
+</div>
+
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<div class="card">
+    <h3>➕ Crear Nuevo Producto</h3>
+    <form action="/products" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="name">Nombre del Producto:</label>
+            <input type="text" id="name" name="name" required placeholder="Ej: Laptop Gaming">
+        </div>
+
+        <div class="form-group">
+            <label for="description">Descripción:</label>
+            <textarea id="description" name="description" rows="3" placeholder="Describe el producto..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="price">Precio:</label>
+            <input type="number" id="price" name="price" step="0.01" required placeholder="0.00">
+        </div>
+
+        <button type="submit" class="btn">Crear Producto</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>📋 Lista de Productos</h3>
+    {% if products %}
+        <div class="product-grid">
+            {% for product in products %}
+            <div class="product-card">
+                <h3>{{ product.name }}</h3>
+                {% if product.description %}
+                <p>{{ product.description }}</p>
+                {% endif %}
+                <div class="price">${{ "%.2f"|format(product.price) }}</div>
+
+                <div style="margin-top: 1rem;">
+                    <h4>🖼️ Subir Imagen</h4>
+                    <form action="/products/{{ product.id }}/image" method="post" enctype="multipart/form-data">
+                        <input type="file" name="file" accept="image/*" required style="margin-bottom: 0.5rem;">
+                        <button type="submit" class="btn" style="font-size: 0.9rem;">Subir Imagen</button>
+                    </form>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <h4>💬 Agregar Comentario</h4>
+                    <form action="/products/{{ product.id }}/comments" method="post">
+                        <input type="text" name="author" placeholder="Tu nombre" required style="margin-bottom: 0.5rem; width: 100%; padding: 0.3rem;">
+                        <textarea name="text" placeholder="Comentario..." rows="2" required style="margin-bottom: 0.5rem; width: 100%; padding: 0.3rem;"></textarea>
+                        <button type="submit" class="btn" style="font-size: 0.9rem;">Comentar</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <strong>ℹ️ No hay productos aún.</strong> Crea el primer producto usando el formulario de arriba.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

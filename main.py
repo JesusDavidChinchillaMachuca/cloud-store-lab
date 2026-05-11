@@ -11,13 +11,25 @@ import os
 import psycopg2
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request, Form, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from google.cloud import storage
 
 load_dotenv()
 
 app = FastAPI(title="Cloud Computing Evaluation API (Starter)")
+
+# Configurar templates
+templates = Jinja2Templates(directory="templates")
+
+# Montar archivos estáticos (si los necesitamos después)
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # =========================
 # DATABASE CONNECTION
@@ -73,6 +85,10 @@ class CommentCreate(BaseModel):
 # ENDPOINTS
 # =========================
 
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
 @app.get("/health")
 def health():
     try:
@@ -98,57 +114,121 @@ def health():
             "database": str(e)
         }
 
+@app.get("/health-page", response_class=HTMLResponse)
+def health_page(request: Request):
+    health_data = health()
+    return templates.TemplateResponse("health.html", {"request": request, "health": health_data})
+
 
 @app.post("/products")
-def create_product(payload: ProductCreate):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+def create_product(
+    request: Request = None,
+    name: str = Form(None),
+    description: str = Form(None),
+    price: float = Form(None),
+    payload: ProductCreate = None
+):
+    # Determinar si es una petición de formulario HTML o JSON
+    is_html_request = name is not None
 
-    cursor.execute(
-        """
-        INSERT INTO products (name, description, price)
-        VALUES (%s, %s, %s)
-        RETURNING id
-        """,
-        (payload.name, payload.description, payload.price)
-    )
+    if is_html_request:
+        # Validar datos del formulario
+        if not name or not price:
+            if request:
+                return templates.TemplateResponse("products.html", {
+                    "request": request,
+                    "products": [],
+                    "error": "Nombre y precio son requeridos"
+                })
+            raise HTTPException(status_code=400, detail="Nombre y precio son requeridos")
 
-    product_id = cursor.fetchone()[0]
+        product_data = ProductCreate(name=name, description=description, price=price)
+    else:
+        # Usar datos JSON
+        if not payload:
+            raise HTTPException(status_code=400, detail="Datos del producto requeridos")
+        product_data = payload
 
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    return {
-        "message": "Producto creado correctamente",
-        "product_id": product_id
-    }
+        cursor.execute(
+            """
+            INSERT INTO products (name, description, price)
+            VALUES (%s, %s, %s)
+            RETURNING id
+            """,
+            (product_data.name, product_data.description, product_data.price)
+        )
+
+        product_id = cursor.fetchone()[0]
+        conn.commit()
+        conn.close()
+
+        if is_html_request:
+            # Redirigir a la página de productos
+            return RedirectResponse(url="/products", status_code=303)
+
+        return {
+            "message": "Producto creado correctamente",
+            "product_id": product_id
+        }
+
+    except Exception as e:
+        if is_html_request and request:
+            return templates.TemplateResponse("products.html", {
+                "request": request,
+                "products": [],
+                "error": f"Error al crear producto: {str(e)}"
+            })
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/products")
-def list_products():
-    conn = get_db_connection()
-    cursor = conn.cursor()
+def list_products(request: Request = None):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT id, name, description, price
-        FROM products
-        ORDER BY id
-    """)
+        cursor.execute("""
+            SELECT id, name, description, price
+            FROM products
+            ORDER BY id
+        """)
 
-    products = cursor.fetchall()
-    conn.close()
+        products = cursor.fetchall()
+        conn.close()
 
-    result = []
+        result = []
 
-    for product in products:
-        result.append({
-            "id": product[0],
-            "name": product[1],
-            "description": product[2],
-            "price": float(product[3])
-        })
+        for product in products:
+            result.append({
+                "id": product[0],
+                "name": product[1],
+                "description": product[2],
+                "price": float(product[3])
+            })
 
-    return result
+        # Si es una petición desde navegador (tiene request), devolver HTML
+        if request:
+            return templates.TemplateResponse("products.html", {
+                "request": request,
+                "products": result,
+                "error": None
+            })
+
+        # Si no, devolver JSON (para API)
+        return result
+
+    except Exception as e:
+        if request:
+            return templates.TemplateResponse("products.html", {
+                "request": request,
+                "products": [],
+                "error": str(e)
+            })
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/products/{product_id}/image")

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Estado del Sistema - Cloud Store Lab{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>🔍 Estado del Sistema</h2>
+    <p>Información sobre el estado de los servicios y conexiones.</p>
+</div>
+
+<div class="card">
+    <h3>📊 Estado General</h3>
+    <div class="status {{ 'ok' if health.status == 'ok' else 'error' }}">
+        Estado de la aplicación: {{ health.status.upper() }}
+    </div>
+
+    {% if health.database %}
+        <h4>🗄️ Base de Datos</h4>
+        {% if health.database == 'connected' %}
+        <div class="status ok">✅ Conexión exitosa a PostgreSQL</div>
+        {% else %}
+        <div class="status error">❌ Error de conexión: {{ health.database }}</div>
+        <div class="alert alert-warning">
+            <strong>Nota:</strong> Si estás viendo este error, significa que la aplicación está funcionando pero no puede conectarse a la base de datos externa. Esto es normal en entornos de desarrollo o cuando la base de datos no permite conexiones desde App Engine.
+        </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>🔧 Información del Sistema</h3>
+    <ul>
+        <li><strong>Framework:</strong> FastAPI con Python 3.11</li>
+        <li><strong>Base de Datos:</strong> PostgreSQL</li>
+        <li><strong>Almacenamiento:</strong> Google Cloud Storage</li>
+        <li><strong>Despliegue:</strong> Google App Engine</li>
+        <li><strong>Región:</strong> us-central</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h3>📋 Endpoints Disponibles</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f8f9fa;">
+                <th style="padding: 0.5rem; text-align: left; border: 1px solid #ddd;">Método</th>
+                <th style="padding: 0.5rem; text-align: left; border: 1px solid #ddd;">Endpoint</th>
+                <th style="padding: 0.5rem; text-align: left; border: 1px solid #ddd;">Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>GET</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>/</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">Página principal</td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>GET</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>/health</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">Estado del sistema</td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>GET</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>/products</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">Lista productos</td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>POST</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>/products</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">Crear producto</td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>POST</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>/products/{id}/image</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">Subir imagen</td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>POST</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>/products/{id}/comments</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">Agregar comentario</td>
+            </tr>
+            <tr>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>GET</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;"><code>/audit/events</code></td>
+                <td style="padding: 0.5rem; border: 1px solid #ddd;">Eventos de auditoría</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
