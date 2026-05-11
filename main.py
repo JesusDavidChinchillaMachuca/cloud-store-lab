@@ -23,26 +23,35 @@ app = FastAPI(title="Cloud Computing Evaluation API (Starter)")
 # DATABASE CONNECTION
 # =========================
 
-conn = psycopg2.connect(
-    host=os.getenv("DB_HOST"),
-    port=os.getenv("DB_PORT"),
-    database=os.getenv("DB_NAME"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASSWORD")
-)
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
 
-cursor = conn.cursor()
+# conn = psycopg2.connect(
+#     host=os.getenv("DB_HOST"),
+#     port=os.getenv("DB_PORT"),
+#     database=os.getenv("DB_NAME"),
+#     user=os.getenv("DB_USER"),
+#     password=os.getenv("DB_PASSWORD")
+# )
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS products (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255),
-    description TEXT,
-    price NUMERIC
-)
-""")
+# cursor = conn.cursor()
 
-conn.commit()
+# cursor.execute("""
+# CREATE TABLE IF NOT EXISTS products (
+#     id SERIAL PRIMARY KEY,
+#     name VARCHAR(255),
+#     description TEXT,
+#     price NUMERIC
+# )
+# """)
+
+# conn.commit()
 
 
 # =========================
@@ -66,13 +75,34 @@ class CommentCreate(BaseModel):
 
 @app.get("/health")
 def health():
-    return {
-        "status": "ok"
-    }
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS products (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255),
+            description TEXT,
+            price NUMERIC
+        )
+        """)
+        conn.commit()
+        conn.close()
+        return {
+            "status": "ok",
+            "database": "connected"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "database": str(e)
+        }
 
 
 @app.post("/products")
 def create_product(payload: ProductCreate):
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
     cursor.execute(
         """
@@ -86,6 +116,7 @@ def create_product(payload: ProductCreate):
     product_id = cursor.fetchone()[0]
 
     conn.commit()
+    conn.close()
 
     return {
         "message": "Producto creado correctamente",
@@ -95,6 +126,8 @@ def create_product(payload: ProductCreate):
 
 @app.get("/products")
 def list_products():
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
     cursor.execute("""
         SELECT id, name, description, price
@@ -103,6 +136,7 @@ def list_products():
     """)
 
     products = cursor.fetchall()
+    conn.close()
 
     result = []
 
